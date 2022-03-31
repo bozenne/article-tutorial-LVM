@@ -3,9 +3,9 @@
 ## Author: Brice Ozenne
 ## Created: mar 28 2022 (09:25) 
 ## Version: 
-## Last-Updated: mar 31 2022 (17:15) 
+## Last-Updated: mar 31 2022 (17:47) 
 ##           By: Brice Ozenne
-##     Update #: 28
+##     Update #: 34
 ##----------------------------------------------------------------------
 ## 
 ### Commentary: 
@@ -36,6 +36,7 @@ covariance(mSPECT.lvm) <- log.supramarginalGyrus~log.neocortex
 if(dir.exists("source")){
     ## import data
     df.SPECT <- readRDS("source/data-SPECT.rds")
+    names(df.SPECT)[names(df.SPECT)=="gender"] <- "sex"
     df.SPECT$group <- as.numeric(df.SPECT$group=="concussion")
     df.SPECT$genotype <- as.numeric(df.SPECT$genotype=="HAB")
 
@@ -47,7 +48,7 @@ if(dir.exists("source")){
     ## get coefficients
     eSPECT.coef <- c(summary(eSPECT.lvm)$coef[,"Estimate"],
                      "group" = mean(df.SPECT$group),
-                     "gender" = mean(df.SPECT$gender=="Male"),
+                     "sex" = mean(df.SPECT$sex=="Male"),
                      genotype = mean(df.SPECT$genotype))
 }
 
@@ -101,7 +102,7 @@ eSPECT.coef <- c("log.thalamus~genotype" = 0.60113337,
                  "log.corpusCallosum" = -0.00509232,
                  "eta" = 1.43044384,
                  "group" = 0.38888889,
-                 "gender" = 0.44444444,
+                 "sex" = 0.44444444,
                  "genotype" = 0.52777778)
 
 
@@ -109,7 +110,7 @@ eSPECT.coef <- c("log.thalamus~genotype" = 0.60113337,
 mSPECTSim.lvm <- mSPECT.lvm
 distribution(mSPECTSim.lvm, ~group) <- binomial.lvm(size = 1, p = eSPECT.coef["group"])
 distribution(mSPECTSim.lvm, ~genotype) <- binomial.lvm(size = 1, p = eSPECT.coef["genotype"])
-distribution(mSPECTSim.lvm, ~gender) <- binomial.lvm(size = 1, p = eSPECT.coef["gender"])
+distribution(mSPECTSim.lvm, ~sex) <- binomial.lvm(size = 1, p = eSPECT.coef["sex"])
 ## mSPECTSim.lvm  <- categorical(mSPECTSim.lvm, ~genotype, p = mean(df.SPECT$genotype=="HAB"), labels = c("MAB","HAB"))
 eSPECTSim.lvm <- do.call(sim, args = c(list(x = mSPECTSim.lvm), as.list(eSPECT.coef[coef(mSPECTSim.lvm)])))
 ## estimate(mSPECT.lvm, sim(eSPECTSim.lvm,1e3))
@@ -119,10 +120,10 @@ set.seed(10)
 dfsim.SPECT <- sim(eSPECTSim.lvm,100,latent=FALSE)
 dfsim.SPECT$group <- factor(dfsim.SPECT$group, levels = 0:1, labels = c("healthy", "concussion"))
 dfsim.SPECT$genotype <- factor(dfsim.SPECT$genotype, levels = 0:1, labels = c("MAB", "HAB"))
-dfsim.SPECT$gender <- factor(dfsim.SPECT$gender, levels = 0:1, labels = c("female", "male"))
+dfsim.SPECT$sex <- factor(dfsim.SPECT$sex, levels = 0:1, labels = c("female", "male"))
 dfsim.SPECT$id <- paste0("ID",1:NROW(dfsim.SPECT))
-dfsim.SPECT <- dfsim.SPECT[,c("id","gender","group","genotype", setdiff(names(dfsim.SPECT),c("id","gender","group","genotype")))]
-write.csv(dfsim.SPECT,"data/data-SPECT.csv", row.names = FALSE)
+dfsim.SPECT <- dfsim.SPECT[,c("id","sex","group","genotype", setdiff(names(dfsim.SPECT),c("id","sex","group","genotype")))]
+write.table(dfsim.SPECT,"data/data-SPECT.txt", row.names = FALSE, sep = ";", dec = ".")
 ## read.table("data/data-SPECT.txt", header = TRUE, sep = ";")
 
 ## * PET
@@ -152,10 +153,12 @@ if(dir.exists("source")){
     ePET.coef <- c(summary(ePET.lvm)$coef[,"Estimate"],
                    "age" = mean(df.PET$age),
                    "age~~age" = var(df.PET$age),
+                   "sex" = mean(df.PET$sex=="Male"),
                    "sert" = mean(df.PET$sert=="LALA"),
                    "mr" = mean(df.PET$mr=="trio"),
+                   "group" = mean(df.PET$group=="Case"),
                    "sb.per.kg" = mean(df.PET$sb.per.kg),
-                   "sb.per.kg~~sb.per.kg" = mean(df.PET$sb.per.kg))
+                   "sb.per.kg~~sb.per.kg" = var(df.PET$sb.per.kg))
 
 }
 
@@ -200,13 +203,15 @@ ePET.coef <- c("neocortex.log~eta" = 1,
                "age~~age" = 65.23446655,
                "sert" = 0.29120879,
                "mr" = 0.20879121,
+               "group" = 0.5,
                "sb.per.kg" = 0.01513636,
-               "sb.per.kg~~sb.per.kg" = 0.01513636)
+               "sb.per.kg~~sb.per.kg" = 0.0002206)
 
 ## ** simulation model (with covariate distribution)
 mPETSim.lvm <- mPET.lvm
 distribution(mPETSim.lvm, ~sert) <- binomial.lvm(size = 1, p = ePET.coef["sert"])
 distribution(mPETSim.lvm, ~mr) <- binomial.lvm(size = 1, p = ePET.coef["mr"])
+distribution(mPETSim.lvm, ~group) <- binomial.lvm(size = 1, p = ePET.coef["group"])
 distribution(mPETSim.lvm, ~age) <- gaussian.lvm(size = 1, mean = ePET.coef["age"], sd = sqrt(ePET.coef["age~~age"]))
 distribution(mPETSim.lvm, ~sb.per.kg) <- gaussian.lvm(size = 1, mean = ePET.coef["sb.per.kg"], sd = sqrt(ePET.coef["sb.per.kg~~sb.per.kg"]))
 
@@ -215,13 +220,15 @@ ePETSim.lvm <- do.call(sim, args = c(list(x = mPETSim.lvm), as.list(ePET.coef[co
 
 ## ** generated data
 set.seed(10)
-dfsim.PET <- sim(ePETSim.lvm,100,latent=FALSE)
-dfsim.PET$sert <- factor(dfsim.PET$sert, levels = 0:1, labels = c("non-LALA", "LALA"))
+dfsim.PET <- sim(ePETSim.lvm,200,latent=FALSE)
+dfsim.PET$sertn <- factor(dfsim.PET$sert, levels = 0:1, labels = c("non-LALA", "LALA"))
 dfsim.PET$mr <- factor(dfsim.PET$mr, levels = 0:1, labels = c("prisma", "trio"))
+dfsim.PET$group <- factor(dfsim.PET$group, levels = 0:1, labels = c("control", "case"))
+dfsim.PET$sex <- factor(dfsim.PET$sex, levels = 0:1, labels = c("female", "male"))
 dfsim.PET$id <- paste0("ID",1:NROW(dfsim.PET))
-dfsim.PET <- dfsim.PET[,c("id","age","sb.per.kg","sert","mr", setdiff(names(dfsim.PET),c("id","age","sb.per.kg","sert","mr")))]
+dfsim.PET <- dfsim.PET[,c("id","group","age","sb.per.kg","sert","mr", setdiff(names(dfsim.PET),c("id","sex","group","age","sb.per.kg","sert","mr")))]
 
-write.csv(dfsim.PET,"data/data-PET.csv", row.names = FALSE)
+write.table(dfsim.PET,"data/data-PET.txt", row.names = FALSE, sep = ";", dec = ".")
 ## read.table("data/data-PET.txt", header = TRUE, sep = ";")
  
 ##----------------------------------------------------------------------
