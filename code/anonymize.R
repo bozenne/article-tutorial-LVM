@@ -3,9 +3,9 @@
 ## Author: Brice Ozenne
 ## Created: mar 28 2022 (09:25) 
 ## Version: 
-## Last-Updated: mar 31 2022 (17:47) 
+## Last-Updated: mar 31 2022 (18:00) 
 ##           By: Brice Ozenne
-##     Update #: 34
+##     Update #: 35
 ##----------------------------------------------------------------------
 ## 
 ### Commentary: 
@@ -123,6 +123,9 @@ dfsim.SPECT$genotype <- factor(dfsim.SPECT$genotype, levels = 0:1, labels = c("M
 dfsim.SPECT$sex <- factor(dfsim.SPECT$sex, levels = 0:1, labels = c("female", "male"))
 dfsim.SPECT$id <- paste0("ID",1:NROW(dfsim.SPECT))
 dfsim.SPECT <- dfsim.SPECT[,c("id","sex","group","genotype", setdiff(names(dfsim.SPECT),c("id","sex","group","genotype")))]
+
+name.log <- grep("^log",names(dfsim.SPECT), value = TRUE)
+names(dfsim.SPECT)[match(name.log,names(dfsim.SPECT))] <- paste0(gsub("log.","",name.log),".log")
 write.table(dfsim.SPECT,"data/data-SPECT.txt", row.names = FALSE, sep = ";", dec = ".")
 ## read.table("data/data-SPECT.txt", header = TRUE, sep = ";")
 
