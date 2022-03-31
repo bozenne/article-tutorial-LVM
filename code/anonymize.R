@@ -3,9 +3,9 @@
 ## Author: Brice Ozenne
 ## Created: mar 28 2022 (09:25) 
 ## Version: 
-## Last-Updated: mar 31 2022 (17:06) 
+## Last-Updated: mar 31 2022 (17:10) 
 ##           By: Brice Ozenne
-##     Update #: 22
+##     Update #: 24
 ##----------------------------------------------------------------------
 ## 
 ### Commentary: 
@@ -122,7 +122,8 @@ dfsim.SPECT$genotype <- factor(dfsim.SPECT$genotype, levels = 0:1, labels = c("M
 dfsim.SPECT$gender <- factor(dfsim.SPECT$gender, levels = 0:1, labels = c("female", "male"))
 dfsim.SPECT$id <- paste0("ID",1:NROW(dfsim.SPECT))
 dfsim.SPECT <- dfsim.SPECT[,c("id","gender","group","genotype", setdiff(names(dfsim.SPECT),c("id","gender","group","genotype")))]
-write.table(dfsim.SPECT,"data/data-SPECT.txt", row.names = FALSE)
+write.table(dfsim.SPECT,"data/data-SPECT.txt", row.names = FALSE, sep = ";")
+## read.table("data/data-SPECT.txt", header = TRUE, sep = ";")
 
 ## * PET
 
@@ -220,7 +221,8 @@ dfsim.PET$mr <- factor(dfsim.PET$mr, levels = 0:1, labels = c("prisma", "trio"))
 dfsim.PET$id <- paste0("ID",1:NROW(dfsim.PET))
 dfsim.PET <- dfsim.PET[,c("id","age","sb.per.kg","sert","mr", setdiff(names(dfsim.PET),c("id","age","sb.per.kg","sert","mr")))]
 
-write.table(dfsim.PET,"data/data-PET.txt", row.names = FALSE)
+write.table(dfsim.PET,"data/data-PET.txt", row.names = FALSE, sep = ";")
+## read.table("data/data-PET.txt", header = TRUE, sep = ";")
  
 ##----------------------------------------------------------------------
 ### anonymize.R ends here
