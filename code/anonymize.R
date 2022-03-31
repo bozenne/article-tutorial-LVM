@@ -3,9 +3,9 @@
 ## Author: Brice Ozenne
 ## Created: mar 28 2022 (09:25) 
 ## Version: 
-## Last-Updated: mar 28 2022 (18:59) 
+## Last-Updated: mar 31 2022 (17:06) 
 ##           By: Brice Ozenne
-##     Update #: 13
+##     Update #: 22
 ##----------------------------------------------------------------------
 ## 
 ### Commentary: 
@@ -122,7 +122,105 @@ dfsim.SPECT$genotype <- factor(dfsim.SPECT$genotype, levels = 0:1, labels = c("M
 dfsim.SPECT$gender <- factor(dfsim.SPECT$gender, levels = 0:1, labels = c("female", "male"))
 dfsim.SPECT$id <- paste0("ID",1:NROW(dfsim.SPECT))
 dfsim.SPECT <- dfsim.SPECT[,c("id","gender","group","genotype", setdiff(names(dfsim.SPECT),c("id","gender","group","genotype")))]
-write.table(dfsim.SPECT,"data/data-SPECT.txt")
+write.table(dfsim.SPECT,"data/data-SPECT.txt", row.names = FALSE)
 
+## * PET
+
+## ** define LVM model
+mPET.lvm <- lvm(neocortex.log ~ eta + age+sex+sert+mr+sb.per.kg,
+                hippocampus.log ~ eta + age+sex+sert+mr+sb.per.kg,
+                caudate.log ~ eta + age+sex+sert+mr+sb.per.kg,
+                putamen.log ~ eta + age+sex+sert+mr+sb.per.kg,
+                eta  ~ group
+                )
+covariance(mPET.lvm) <- putamen.log~caudate.log
+latent(mPET.lvm) <- ~eta
+
+## ** extract model parameters
+if(dir.exists("source")){
+
+    ## import data
+    df.PET <- read.table("source/data-PET.txt", dec = ".", header = TRUE)
+
+    ## fit
+    ePET.lvm <- estimate(mPET.lvm, data = df.PET, control = list(constrain=FALSE))
+    logLik(ePET.lvm)
+    ## 'log Lik.' 613.151 (df=34)
+
+    ## get coefficients
+    ePET.coef <- c(summary(ePET.lvm)$coef[,"Estimate"],
+                   "age" = mean(df.PET$age),
+                   "age~~age" = var(df.PET$age),
+                   "sert" = mean(df.PET$sert=="LALA"),
+                   "mr" = mean(df.PET$mr=="trio"),
+                   "sb.per.kg" = mean(df.PET$sb.per.kg),
+                   "sb.per.kg~~sb.per.kg" = mean(df.PET$sb.per.kg))
+
+}
+
+## ** model parameters
+ePET.coef <- c("neocortex.log~eta" = 1,
+               "neocortex.log~age" = -0.00202731,
+               "neocortex.log~sb.per.kg" = -2.45924156,
+               "neocortex.log~sexMale" = 0.07623864,
+               "neocortex.log~sertnonLALA" = 0.02495424,
+               "neocortex.log~mrtrio" = -0.03974207,
+               "eta~groupHealthy Control" = 0.07796427,
+               "hippocampus.log~eta" = 1.09846887,
+               "hippocampus.log~age" = -0.00094373,
+               "hippocampus.log~sb.per.kg" = -2.15394497,
+               "hippocampus.log~sexMale" = 0.02981759,
+               "hippocampus.log~sertnonLALA" = 0.0003854,
+               "hippocampus.log~mrtrio" = -0.08665295,
+               "caudate.log~eta" = 0.92934557,
+               "caudate.log~age" = -0.00348555,
+               "caudate.log~sb.per.kg" = -0.88957266,
+               "caudate.log~sexMale" = -0.02011877,
+               "caudate.log~sertnonLALA" = 0.01968885,
+               "caudate.log~mrtrio" = -0.04102281,
+               "putamen.log~eta" = 0.89647695,
+               "putamen.log~age" = -0.00417257,
+               "putamen.log~sb.per.kg" = -1.76418045,
+               "putamen.log~sexMale" = 0.03510004,
+               "putamen.log~sertnonLALA" = -0.01218037,
+               "putamen.log~mrtrio" = 0.00109894,
+               "neocortex.log~~neocortex.log" = 0.005535,
+               "eta~~eta" = 0.0150819,
+               "hippocampus.log~~hippocampus.log" = 0.00830567,
+               "caudate.log~~caudate.log" = 0.0086576,
+               "caudate.log~~putamen.log" = 0.00275813,
+               "putamen.log~~putamen.log" = 0.00486161,
+               "neocortex.log" = 0,
+               "eta" = -0.427904,
+               "hippocampus.log" = 0.55344104,
+               "caudate.log" = 1.7410477,
+               "putamen.log" = 1.70379965,
+               "age" = 27.09720122,
+               "age~~age" = 65.23446655,
+               "sert" = 0.29120879,
+               "mr" = 0.20879121,
+               "sb.per.kg" = 0.01513636,
+               "sb.per.kg~~sb.per.kg" = 0.01513636)
+
+## ** simulation model (with covariate distribution)
+mPETSim.lvm <- mPET.lvm
+distribution(mPETSim.lvm, ~sert) <- binomial.lvm(size = 1, p = ePET.coef["sert"])
+distribution(mPETSim.lvm, ~mr) <- binomial.lvm(size = 1, p = ePET.coef["mr"])
+distribution(mPETSim.lvm, ~age) <- gaussian.lvm(size = 1, mean = ePET.coef["age"], sd = sqrt(ePET.coef["age~~age"]))
+distribution(mPETSim.lvm, ~sb.per.kg) <- gaussian.lvm(size = 1, mean = ePET.coef["sb.per.kg"], sd = sqrt(ePET.coef["sb.per.kg~~sb.per.kg"]))
+
+ePETSim.lvm <- do.call(sim, args = c(list(x = mPETSim.lvm), as.list(ePET.coef[coef(mPETSim.lvm)])))
+## estimate(mPET.lvm, sim(ePETSim.lvm,1e3))
+
+## ** generated data
+set.seed(10)
+dfsim.PET <- sim(ePETSim.lvm,100,latent=FALSE)
+dfsim.PET$sert <- factor(dfsim.PET$sert, levels = 0:1, labels = c("non-LALA", "LALA"))
+dfsim.PET$mr <- factor(dfsim.PET$mr, levels = 0:1, labels = c("prisma", "trio"))
+dfsim.PET$id <- paste0("ID",1:NROW(dfsim.PET))
+dfsim.PET <- dfsim.PET[,c("id","age","sb.per.kg","sert","mr", setdiff(names(dfsim.PET),c("id","age","sb.per.kg","sert","mr")))]
+
+write.table(dfsim.PET,"data/data-PET.txt", row.names = FALSE)
+ 
 ##----------------------------------------------------------------------
 ### anonymize.R ends here
